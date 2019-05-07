@@ -10,9 +10,10 @@ from typing import Any, Dict, Optional
 
 from bc.common.entities import Appointment
 
-class Receiver:
+class Transceiver:
     """
-    A class that wraps a socket and divides the received bytes into messages using a delimiter.
+    A class that wraps a socket. It divides the received bytes into messages using a delimiter and
+    adds a delimiter to sent messages.
     """
 
     def __init__(self, sock: socket.socket, delimiter: bytes):
@@ -33,6 +34,12 @@ class Receiver:
 
         del self._buffer[:i+len(self._delimiter)]
         return res
+
+    def send(self, message: bytes) -> None:
+        """
+        Send a message, appending the delimiter to it.
+        """
+        self._socket.sendall(message + self._delimiter)
 
 @unique
 class RequestType(Enum):

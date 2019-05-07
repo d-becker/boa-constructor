@@ -16,7 +16,7 @@ class TestCommunication(unittest.TestCase):
 
             socket1.send(msg1 + delimiter + msg2[:6])
             socket1.send(msg2[6:] + delimiter)
-            receiver = bc.common.comm_util.Receiver(socket2, delimiter)
+            receiver = bc.common.comm_util.Transceiver(socket2, delimiter)
 
             received1 = receiver.receive()
             received2 = receiver.receive()
