@@ -2,33 +2,38 @@
 This module contains the server.
 """
 
-from enum import auto, Enum, unique
+import socketserver
 
-from bc.common.entities import TimeSlot
+from bc.common.comm_util import Request, Transceiver
 
-@unique
-class TimeSlotState(Enum):
+class RequestHandler(socketserver.BaseRequestHandler):
     """
-    An enum of the possible states of TimeSlots.
-    """
-    AVAILABLE = auto()
-    IN_BASKET = auto()
-    RESERVED = auto()
-
-class TimeSlotInfo:
-    """
-    A class that stores information about the availability of a TimeSlot.
+    Request handler class.
     """
 
-    def __init__(self, time_slot: TimeSlot, state: TimeSlotState, owner: int) -> None:
-        """
-        Args:
-            time_slot: The TimeSlot object.
-            state: The state of the TimeSlot.
-            owner: If state is IN_BASKET or RESERVED, this is the client id of the owner, otherwise
-                it is unused.
-        """
+    def handle(self) -> None:
+        socket = self.request
+        transceiver = Transceiver(socket)
 
-        self.time_slot = time_slot
-        self.state = state
-        self.owner = owner
+        msg_bytes = transceiver.receive()
+        # TODO.
+        print(msg_bytes)
+        request = Request.from_bytes(msg_bytes)
+
+    def handle_list_basket(self):
+        pass
+
+
+def server_main():
+    """
+    Server main loop.
+    """
+
+    print("Entering server.")
+    HOST = "localhost"
+    PORT = 9999
+
+    with socketserver.TCPServer((HOST, PORT), RequestHandler) as server:
+            # Activate the server; this will keep running until you
+            # interrupt the program with Ctrl-C
+            server.serve_forever()

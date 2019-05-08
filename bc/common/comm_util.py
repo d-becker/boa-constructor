@@ -16,7 +16,7 @@ class Transceiver:
     adds a delimiter to sent messages.
     """
 
-    def __init__(self, sock: socket.socket, delimiter: bytes):
+    def __init__(self, sock: socket.socket, delimiter: bytes = b'\xff'):
         self._delimiter = delimiter
         self._socket = sock
         self._buffer = bytearray()

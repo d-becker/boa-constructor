@@ -2,6 +2,8 @@
 Module representing entities.
 """
 
+from typing import Any
+
 class ServiceProvider:
     """
     A class representing a service provider.
@@ -15,6 +17,12 @@ class ServiceProvider:
         Returns the name of the service provider.
         """
         return self._name
+
+    def __eq__(self, other: Any) -> bool:
+        return self._name == other.name()
+
+    def __hash__(self) -> int:
+        return hash(self._name)
 
 class TimeSlot:
     """
@@ -52,6 +60,12 @@ class TimeSlot:
         Returns the hour of this `TimeSlot`.
         """
         return self._hour
+
+    def __eq__(self, other: Any) -> bool:
+        return (self._year == other.year()
+                and self._month == other.month()
+                and self._day == other.day()
+                and self._hour == other.hour())
 
     @staticmethod
     def _check_date_and_time(month: int, day: int, hour: int) -> None:
