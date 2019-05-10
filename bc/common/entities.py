@@ -24,6 +24,9 @@ class ServiceProvider:
     def __hash__(self) -> int:
         return hash(self._name)
 
+    def __repr__(self) -> str:
+        return self._name
+
 class TimeSlot:
     """
     A class representing a time slot.
@@ -67,6 +70,10 @@ class TimeSlot:
                 and self._day == other.day()
                 and self._hour == other.hour())
 
+    def __repr__(self) -> str:
+        data = [self.year, self.month, self.day, self.hour]
+        return "-".join(map(str, data))
+
     @staticmethod
     def _check_date_and_time(month: int, day: int, hour: int) -> None:
         if hour < 0 or hour > 24:
@@ -106,3 +113,6 @@ class Appointment:
         """
 
         return self._time_slot
+
+    def __repr__(self) -> str:
+        return "{}:\t{}".format(self._service_provider, self._time_slot)
