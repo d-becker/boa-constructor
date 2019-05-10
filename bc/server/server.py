@@ -13,20 +13,24 @@ class RequestHandler(socketserver.BaseRequestHandler):
     Request handler class.
     """
 
-    router: Dict[RequestType, Callable[[RequestHandler, Message], Message]] = {
-        RequestType.LIST_BASKET: RequestHandler.handle_list_basket,
-        RequestType.LIST_BOOKED_APPOINTMENTS: RequestHandler.handle_list_booked_appointments,
-        RequestType.LIST_AVAILABLE_APPOINTMENTS: RequestHandler.handle_list_available_appointments,
-        RequestType.ADD_APPOINTMENT_TO_BASKET: RequestHandler.handle_add_appointment_to_basket,
-        RequestType.REMOVE_APPOINTMENT_FROM_BASKET: RequestHandler.handle_remove_appointment_from_basket,
-        RequestType.CONFIRM_BOOKING: RequestHandler.handle_confirm_booking,
-        RequestType.CANCEL_APPOINTMENT: RequestHandler.handle_cancel_appointment,
-        }
-
     def __init__(self, *args) -> None:
+        super(RequestHandler, self).__init__(*args)
+        print("Request handler being constructed.")
         self.server_state = ServerState()
+        self.router: Dict[RequestType, Callable[[RequestHandler, Message], Message]] = {
+            RequestType.LIST_BASKET: RequestHandler.handle_list_basket,
+            RequestType.LIST_BOOKED_APPOINTMENTS: RequestHandler.handle_list_booked_appointments,
+            RequestType.LIST_AVAILABLE_APPOINTMENTS: RequestHandler.handle_list_available_appointments,
+            RequestType.ADD_APPOINTMENT_TO_BASKET: RequestHandler.handle_add_appointment_to_basket,
+            RequestType.REMOVE_APPOINTMENT_FROM_BASKET: RequestHandler.handle_remove_appointment_from_basket,
+            RequestType.CONFIRM_BOOKING: RequestHandler.handle_confirm_booking,
+            RequestType.CANCEL_APPOINTMENT: RequestHandler.handle_cancel_appointment,
+            }
+        print("Request handler constructed.")
 
     def handle(self) -> None:
+        print("Handling request from handler.")
+
         socket = self.request
         transceiver = Transceiver(socket)
 
@@ -37,7 +41,7 @@ class RequestHandler(socketserver.BaseRequestHandler):
         try:
             request = Message.from_bytes(msg_bytes).data()
             request_type = request["type"]
-            reply = RequestHandler.router[request_type](self, request)
+            reply = self.router[request_type](self, request)
         except:
             reply = self.__get_reply_message(False, "Invalid request.")
 
@@ -181,11 +185,15 @@ def server_main():
     Server main loop.
     """
 
-    print("Entering server.")
+    print("Entering server!")
     HOST = "localhost"
-    PORT = 9999
+    PORT = 9998
 
+    # TODO: RequestHandler
     with socketserver.TCPServer((HOST, PORT), RequestHandler) as server:
             # Activate the server; this will keep running until you
             # interrupt the program with Ctrl-C
+            server.timeout = None
+            server.handle_request()
+            print("Handled request.")
             server.serve_forever()
