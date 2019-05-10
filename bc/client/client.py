@@ -45,3 +45,23 @@ if __name__ == '__main__':
                 msg = generateMsg(req_gen, task)
                 trans.send(msg)
                 ans = trans.receive()
+
+                ans_data = Request(ans).data()
+
+                ok = ans_data["OK"]
+                text = ans_data["text"]
+
+                if ok:
+                    print('Your request had been confirmed.')
+                else:
+                    print('Your request could not be confirmed due to the following error: ' +
+                    text)
+
+
+
+
+
+
+
+
+
