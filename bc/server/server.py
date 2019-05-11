@@ -28,12 +28,12 @@ class RequestHandler(socketserver.BaseRequestHandler):
         transceiver = Transceiver(socket)
 
         msg_bytes = transceiver.receive()
-        # TODO.
-        print(msg_bytes)
 
         try:
             request = Message.from_bytes(msg_bytes)
-            request_type = request.data()["type"]
+            request_data = request.data()
+            print("Request data:\n{}.".format(request_data))
+            request_type = request_data["type"]
             reply = self.server.router[request_type](self, request)
         except:
             reply = self.__get_reply_message(False, "Invalid request.")
@@ -59,8 +59,13 @@ class RequestHandler(socketserver.BaseRequestHandler):
         return self._filter_appointments(provider_filter, ts_filter)
 
     def handle_list_available_appointments(self, request: Message):
-        provider_filter = lambda a: True
-        ts_filter = lambda slot_info: slot_info.state == TimeSlotState.RESERVED
+        provider = request.data()["service_provider"]
+        if provider:
+            provider_filter = lambda p: p.name() == provider
+        else:
+            provider_filter = lambda a: True
+
+        ts_filter = lambda slot_info: slot_info.state == TimeSlotState.AVAILABLE
 
         return self._filter_appointments(provider_filter, ts_filter)
 
@@ -120,7 +125,10 @@ class RequestHandler(socketserver.BaseRequestHandler):
             return ts_info
 
         if ts_info.state != expected_state or ts_info.owner != client_id:
-            return self.__get_reply_message(False, "Appointment not reserved by you.")
+            error_msg = ("Appointment not reserved by you"
+                         if expected_state == TimeSlotState.RESERVED
+                         else "Appointment not in your basket.")
+            return self.__get_reply_message(False, error_msg)
 
         ts_info.state = TimeSlotState.AVAILABLE
 
@@ -133,7 +141,7 @@ class RequestHandler(socketserver.BaseRequestHandler):
 
         ts_infos = self.server.server_state.service_provider_db[appointment.service_provider()]
 
-        ts_info_filtered = list(filter(lambda ts_info: ts_info.time_slot == appointment.time_slot, ts_infos))
+        ts_info_filtered = list(filter(lambda ts_info: ts_info.time_slot == appointment.time_slot(), ts_infos))
 
         if not ts_info_filtered:
             return self.__get_reply_message(False, "No such time slot for the provider")
@@ -176,6 +184,7 @@ class Server(socketserver.TCPServer):
     def __init__(self, *args, **kwargs):
         socketserver.TCPServer.__init__(self, *args, **kwargs)
         self.server_state = ServerState()
+        self.server_state.load_service_providers("service_providers.txt")
         self.router: Dict[RequestType, Callable[[RequestHandler, Message], Message]] = {
             RequestType.LIST_BASKET: RequestHandler.handle_list_basket,
             RequestType.LIST_BOOKED_APPOINTMENTS: RequestHandler.handle_list_booked_appointments,

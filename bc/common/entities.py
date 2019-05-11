@@ -71,7 +71,7 @@ class TimeSlot:
                 and self._hour == other.hour())
 
     def __repr__(self) -> str:
-        data = [self.year, self.month, self.day, self.hour]
+        data = [self._year, self._month, self._day, self._hour]
         return "-".join(map(str, data))
 
     @staticmethod
