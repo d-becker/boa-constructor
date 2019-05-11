@@ -14,7 +14,7 @@ class RequestHandler(socketserver.BaseRequestHandler):
     """
 
     def __init__(self, *args) -> None:
-        super(RequestHandler, self).__init__(*args)
+        socketserver.BaseRequestHandler.__init__(*args)
         print("Request handler being constructed.")
         self.server_state = ServerState()
         self.router: Dict[RequestType, Callable[[RequestHandler, Message], Message]] = {
