@@ -13,20 +13,13 @@ class RequestHandler(socketserver.BaseRequestHandler):
     Request handler class.
     """
 
-    def __init__(self, *args) -> None:
-        socketserver.BaseRequestHandler.__init__(*args)
-        print("Request handler being constructed.")
-        self.server_state = ServerState()
-        self.router: Dict[RequestType, Callable[[RequestHandler, Message], Message]] = {
-            RequestType.LIST_BASKET: RequestHandler.handle_list_basket,
-            RequestType.LIST_BOOKED_APPOINTMENTS: RequestHandler.handle_list_booked_appointments,
-            RequestType.LIST_AVAILABLE_APPOINTMENTS: RequestHandler.handle_list_available_appointments,
-            RequestType.ADD_APPOINTMENT_TO_BASKET: RequestHandler.handle_add_appointment_to_basket,
-            RequestType.REMOVE_APPOINTMENT_FROM_BASKET: RequestHandler.handle_remove_appointment_from_basket,
-            RequestType.CONFIRM_BOOKING: RequestHandler.handle_confirm_booking,
-            RequestType.CANCEL_APPOINTMENT: RequestHandler.handle_cancel_appointment,
-            }
-        print("Request handler constructed.")
+    def __init__(self, *args, **kwargs) -> None:
+        socketserver.BaseRequestHandler.__init__(self, *args, **kwargs)
+
+        if not isinstance(self.server, Server):
+            raise TypeError("Unsupported server type.")
+
+        self.server: Server = self.server
 
     def handle(self) -> None:
         print("Handling request from handler.")
@@ -39,9 +32,9 @@ class RequestHandler(socketserver.BaseRequestHandler):
         print(msg_bytes)
 
         try:
-            request = Message.from_bytes(msg_bytes).data()
-            request_type = request["type"]
-            reply = self.router[request_type](self, request)
+            request = Message.from_bytes(msg_bytes)
+            request_type = request.data()["type"]
+            reply = self.server.router[request_type](self, request)
         except:
             reply = self.__get_reply_message(False, "Invalid request.")
 
@@ -135,10 +128,10 @@ class RequestHandler(socketserver.BaseRequestHandler):
 
 
     def _find_ts_info_for_appointment(self, appointment: Appointment) -> Union[Message, TimeSlotInfo]:
-        if appointment.service_provider() not in self.server_state.service_provider_db:
+        if appointment.service_provider() not in self.server.server_state.service_provider_db:
             return self.__get_reply_message(False, "No such provider")
 
-        ts_infos = self.server_state.service_provider_db[appointment.service_provider()]
+        ts_infos = self.server.server_state.service_provider_db[appointment.service_provider()]
 
         ts_info_filtered = list(filter(lambda ts_info: ts_info.time_slot == appointment.time_slot, ts_infos))
 
@@ -154,10 +147,10 @@ class RequestHandler(socketserver.BaseRequestHandler):
                              ts_predicate: Callable[[TimeSlotInfo], bool]) -> List[Appointment]:
         appointments: List[Appointment] = []
 
-        providers = filter(provider_predicate, self.server_state.service_provider_db.keys())
+        providers = filter(provider_predicate, self.server.server_state.service_provider_db.keys())
 
         for provider in providers:
-            info = self.server_state.service_provider_db[provider]
+            info = self.server.server_state.service_provider_db[provider]
             ts_infos = filter(ts_predicate, info)
             aps = map(lambda ts_info: Appointment(provider, ts_info.time_slot), ts_infos)
             appointments.extend(aps)
@@ -169,7 +162,7 @@ class RequestHandler(socketserver.BaseRequestHandler):
                              ts_predicate: Callable[[TimeSlotInfo], bool]) -> Message:
         appointments: List[Appointment] = self._filter_appointments_list(provider_predicate, ts_predicate)
         text = "\n".join(map(str, appointments))
-        return Message(self.__get_reply_message(True, text))
+        return self.__get_reply_message(True, text)
 
     @staticmethod
     def __get_reply_message(ok: bool, text: str) -> Message:
@@ -178,6 +171,20 @@ class RequestHandler(socketserver.BaseRequestHandler):
             "text": text
             }
         return Message(msg_dict)
+
+class Server(socketserver.TCPServer):
+    def __init__(self, *args, **kwargs):
+        socketserver.TCPServer.__init__(self, *args, **kwargs)
+        self.server_state = ServerState()
+        self.router: Dict[RequestType, Callable[[RequestHandler, Message], Message]] = {
+            RequestType.LIST_BASKET: RequestHandler.handle_list_basket,
+            RequestType.LIST_BOOKED_APPOINTMENTS: RequestHandler.handle_list_booked_appointments,
+            RequestType.LIST_AVAILABLE_APPOINTMENTS: RequestHandler.handle_list_available_appointments,
+            RequestType.ADD_APPOINTMENT_TO_BASKET: RequestHandler.handle_add_appointment_to_basket,
+            RequestType.REMOVE_APPOINTMENT_FROM_BASKET: RequestHandler.handle_remove_appointment_from_basket,
+            RequestType.CONFIRM_BOOKING: RequestHandler.handle_confirm_booking,
+            RequestType.CANCEL_APPOINTMENT: RequestHandler.handle_cancel_appointment,
+            }
 
 
 def server_main():
@@ -190,10 +197,7 @@ def server_main():
     PORT = 9998
 
     # TODO: RequestHandler
-    with socketserver.TCPServer((HOST, PORT), RequestHandler) as server:
+    with Server((HOST, PORT), RequestHandler) as server:
             # Activate the server; this will keep running until you
             # interrupt the program with Ctrl-C
-            server.timeout = None
-            server.handle_request()
-            print("Handled request.")
             server.serve_forever()
