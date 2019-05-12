@@ -235,7 +235,7 @@ def server_main():
     """
 
     print("Entering server!")
-    HOST = "localhost"
+    HOST = "0.0.0.0"
     PORT = 9998
 
     with Server((HOST, PORT), RequestHandler) as server:
