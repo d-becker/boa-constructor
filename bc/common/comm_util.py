@@ -47,6 +47,7 @@ class RequestType(Enum):
     Client request types.
     """
 
+    LOGIN = auto()
     LIST_BASKET = auto()
     LIST_BOOKED_APPOINTMENTS = auto()
     LIST_AVAILABLE_APPOINTMENTS = auto()
@@ -90,6 +91,22 @@ class RequestGenerator:
     """
     A class with methods for generating request `Message` objects.
     """
+
+    @staticmethod
+    def msg_login(username: str, password: str) -> Message:
+        """
+        Returns a login `Message` object.
+        """
+
+        dictionary = {
+            "client_id": -1,
+            "request_id": -1,
+            "type": RequestType.LOGIN,
+            "username": username,
+            "password": password
+            }
+
+        return Message(dictionary)
 
     def __init__(self, client_id: int):
         self._client_id = client_id

@@ -32,13 +32,45 @@ class RequestHandler(socketserver.BaseRequestHandler):
         try:
             request = Message.from_bytes(msg_bytes)
             request_data = request.data()
+            print("Client address: {}.".format(socket.getpeername()))
             print("Request data:\n{}.".format(request_data))
-            request_type = request_data["type"]
-            reply = self.server.router[request_type](self, request)
+
+            if request_data["type"] == RequestType.LOGIN:
+                reply = self.handle_login(request, socket.getpeername()[0])
+            else:
+                if self.check_client_id(request, socket.getpeername()[0]):
+                    request_type = request_data["type"]
+                    reply = self.server.router[request_type](self, request)
+                else:
+                    reply = self.__get_reply_message(False, "Access denied.")
         except:
             reply = self.__get_reply_message(False, "Invalid request.")
 
         transceiver.send(reply.to_bytes())
+
+    def handle_login(self, request: Message, ip_address: str) -> Message:
+        request_data = request.data()
+        username = request_data["username"]
+        password = request_data["password"]
+
+        user_list = list(filter(lambda user: user.username == username,
+                                self.server.server_state.users))
+
+        if user_list and user_list[0].password == password:
+            user = user_list[0]
+            self.server.server_state.connected_users[user.user_id] = ip_address
+            reply = self.__get_reply_message(True, "Login successful.")
+            reply.data()["client_id"] = user.user_id
+        else:
+            reply = Message(self.__get_reply_message(False, "Invalid username or password."))
+
+        return reply
+
+    def check_client_id(self, request: Message, ip_address: str) -> bool:
+        client_id = request.data()["client_id"]
+        stored_ip = self.server.server_state.connected_users.get(client_id)
+
+        return stored_ip == ip_address
 
     def handle_list_basket(self, request: Message) -> Message:
         client_id = request.data()["client_id"]
@@ -185,6 +217,7 @@ class Server(socketserver.TCPServer):
         socketserver.TCPServer.__init__(self, *args, **kwargs)
         self.server_state = ServerState()
         self.server_state.load_service_providers("service_providers.txt")
+        self.server_state.load_users("users.txt")
         self.router: Dict[RequestType, Callable[[RequestHandler, Message], Message]] = {
             RequestType.LIST_BASKET: RequestHandler.handle_list_basket,
             RequestType.LIST_BOOKED_APPOINTMENTS: RequestHandler.handle_list_booked_appointments,
@@ -205,7 +238,6 @@ def server_main():
     HOST = "localhost"
     PORT = 9998
 
-    # TODO: RequestHandler
     with Server((HOST, PORT), RequestHandler) as server:
             # Activate the server; this will keep running until you
             # interrupt the program with Ctrl-C
