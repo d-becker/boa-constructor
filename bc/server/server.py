@@ -62,7 +62,7 @@ class RequestHandler(socketserver.BaseRequestHandler):
             reply = self.__get_reply_message(True, "Login successful.")
             reply.data()["client_id"] = user.user_id
         else:
-            reply = Message(self.__get_reply_message(False, "Invalid username or password."))
+            reply = self.__get_reply_message(False, "Invalid username or password.")
 
         return reply
 
